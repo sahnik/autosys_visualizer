@@ -8,6 +8,8 @@ interface HeaderProps {
   onLayoutChange: (layout: LayoutName) => void;
   onFit: () => void;
   hasData: boolean;
+  timingEnabled: boolean;
+  onTimingToggle: () => void;
 }
 
 export default function Header({
@@ -17,6 +19,8 @@ export default function Header({
   onLayoutChange,
   onFit,
   hasData,
+  timingEnabled,
+  onTimingToggle,
 }: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,6 +82,23 @@ export default function Header({
           <option value="breadthfirst">Breadthfirst</option>
           <option value="concentric">Concentric</option>
         </select>
+
+        <button
+          onClick={onTimingToggle}
+          disabled={!hasData}
+          className={`px-3 py-1.5 text-sm rounded transition-colors disabled:opacity-50 flex items-center gap-1.5 ${
+            timingEnabled
+              ? 'bg-amber-600 hover:bg-amber-500 text-white'
+              : 'bg-gray-700 hover:bg-gray-600'
+          }`}
+          title="Toggle timing analysis"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          Timing
+        </button>
 
         <button
           onClick={onFit}

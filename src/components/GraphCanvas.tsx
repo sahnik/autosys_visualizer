@@ -3,6 +3,7 @@ import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import type { Core, EventObject, LayoutOptions } from 'cytoscape';
 import type { Job, LayoutName } from '../types';
+import type { TimingAnalysis } from '../utils/timingAnalysis';
 import { jobsToCytoscapeElements } from '../utils/dataTransform';
 import { cytoscapeStylesheet } from '../styles/cytoscape';
 
@@ -17,6 +18,9 @@ interface GraphCanvasProps {
   onNodeSelect: (nodeId: string | null) => void;
   onZoomChange: (zoom: number) => void;
   cyRef: React.MutableRefObject<Core | null>;
+  timingEnabled: boolean;
+  timingResult: TimingAnalysis | null;
+  durationOverrides: Map<string, number>;
 }
 
 // Use Record<string, unknown> since dagre adds custom options not in base types
@@ -50,6 +54,9 @@ export default function GraphCanvas({
   onNodeSelect,
   onZoomChange,
   cyRef,
+  timingEnabled,
+  timingResult,
+  durationOverrides,
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<LayoutName>(layout);
@@ -165,6 +172,65 @@ export default function GraphCanvas({
   useEffect(() => {
     applyFilters();
   }, [applyFilters]);
+
+  // Timing analysis visuals
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+
+    const timingClasses = ['timing-active', 'critical-path', 'critical-edge', 'duration-override'];
+
+    if (!timingEnabled || !timingResult) {
+      // Remove all timing classes and restore labels
+      cy.batch(() => {
+        cy.elements().removeClass(timingClasses.join(' '));
+        cy.nodes().forEach((node) => {
+          node.data('label', node.data('name') as string);
+        });
+      });
+      return;
+    }
+
+    const { nodeTiming, criticalPath } = timingResult;
+    const criticalSet = new Set(criticalPath);
+
+    // Build set of critical edges
+    const criticalEdgeSet = new Set<string>();
+    for (let i = 0; i < criticalPath.length - 1; i++) {
+      const edgeId = `${criticalPath[i]}->${criticalPath[i + 1]}`;
+      criticalEdgeSet.add(edgeId);
+    }
+
+    cy.batch(() => {
+      // Clear previous timing classes
+      cy.elements().removeClass(timingClasses.join(' '));
+
+      cy.nodes().forEach((node) => {
+        const id = node.id();
+        const timing = nodeTiming.get(id);
+        if (!timing) return;
+
+        const dur = timing.effectiveDuration;
+        const label = `${node.data('name') as string}\n\u23F1 ${dur}m`;
+        node.data('label', label);
+        node.addClass('timing-active');
+
+        if (criticalSet.has(id)) {
+          node.addClass('critical-path');
+        }
+
+        if (durationOverrides.has(id)) {
+          node.addClass('duration-override');
+        }
+      });
+
+      cy.edges().forEach((edge) => {
+        if (criticalEdgeSet.has(edge.id())) {
+          edge.addClass('critical-edge');
+        }
+      });
+    });
+  }, [timingEnabled, timingResult, durationOverrides, cyRef]);
 
   return (
     <div ref={containerRef} className="flex-1 bg-gray-900" />

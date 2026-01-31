@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import type { LayoutName } from '../types';
 import { useGraphData } from '../hooks/useGraphData';
 import { useSelection } from '../hooks/useSelection';
+import { useTimingAnalysis } from '../hooks/useTimingAnalysis';
 import { getUpstream, getDownstream } from '../utils/graphUtils';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -11,6 +12,16 @@ import StatusBar from './StatusBar';
 export default function App() {
   const { jobs, error, loadFromFile, loadSampleData } = useGraphData();
   const { selectedJobId, selectNode, cyRef } = useSelection();
+  const {
+    timingEnabled,
+    toggleTiming,
+    timingResult,
+    baselineDuration,
+    durationOverrides,
+    setDurationOverride,
+    clearDurationOverride,
+    resetAllOverrides,
+  } = useTimingAnalysis(jobs);
 
   const [layout, setLayout] = useState<LayoutName>('dagre');
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,6 +60,8 @@ export default function App() {
         onLayoutChange={setLayout}
         onFit={handleFit}
         hasData={jobs.length > 0}
+        timingEnabled={timingEnabled}
+        onTimingToggle={toggleTiming}
       />
 
       {error && (
@@ -64,6 +77,13 @@ export default function App() {
           filters={typeFilters}
           onFilterToggle={handleFilterToggle}
           selectedJob={selectedJob}
+          timingEnabled={timingEnabled}
+          timingResult={timingResult}
+          baselineDuration={baselineDuration}
+          durationOverrides={durationOverrides}
+          onDurationOverride={setDurationOverride}
+          onClearOverride={clearDurationOverride}
+          onResetAllOverrides={resetAllOverrides}
         />
 
         {jobs.length > 0 ? (
@@ -75,6 +95,9 @@ export default function App() {
             onNodeSelect={selectNode}
             onZoomChange={setZoom}
             cyRef={cyRef}
+            timingEnabled={timingEnabled}
+            timingResult={timingResult}
+            durationOverrides={durationOverrides}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -98,6 +121,9 @@ export default function App() {
         upstreamCount={upstreamCount}
         downstreamCount={downstreamCount}
         zoom={zoom}
+        timingEnabled={timingEnabled}
+        totalDuration={timingResult?.totalDuration ?? 0}
+        criticalPathLength={timingResult?.criticalPath.length ?? 0}
       />
     </div>
   );

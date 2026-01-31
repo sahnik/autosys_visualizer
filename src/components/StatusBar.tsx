@@ -4,6 +4,9 @@ interface StatusBarProps {
   upstreamCount: number;
   downstreamCount: number;
   zoom: number;
+  timingEnabled: boolean;
+  totalDuration: number;
+  criticalPathLength: number;
 }
 
 export default function StatusBar({
@@ -12,6 +15,9 @@ export default function StatusBar({
   upstreamCount,
   downstreamCount,
   zoom,
+  timingEnabled,
+  totalDuration,
+  criticalPathLength,
 }: StatusBarProps) {
   return (
     <footer className="flex items-center justify-between px-4 py-1.5 bg-gray-800 border-t border-gray-700 text-xs text-gray-400">
@@ -24,6 +30,14 @@ export default function StatusBar({
               <span className="text-blue-400">{upstreamCount} upstream</span>
               {' / '}
               <span className="text-green-400">{downstreamCount} downstream</span>
+            </span>
+          </>
+        )}
+        {timingEnabled && (
+          <>
+            <span className="text-gray-600">|</span>
+            <span className="text-red-400">
+              Critical path: {totalDuration}m ({criticalPathLength} jobs)
             </span>
           </>
         )}

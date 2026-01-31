@@ -120,4 +120,54 @@ export const cytoscapeStylesheet: StyleEntry[] = [
       'border-width': 3,
     },
   },
+  // Timing analysis: active nodes show two-line labels
+  {
+    selector: 'node.timing-active',
+    style: {
+      'height': '48px',
+      'text-wrap': 'wrap',
+      'text-max-width': '130px',
+    },
+  },
+  // Critical path node
+  {
+    selector: 'node.critical-path',
+    style: {
+      'border-color': '#EF4444',
+      'border-width': 3,
+      'border-style': 'solid',
+    },
+  },
+  // Critical path edge
+  {
+    selector: 'edge.critical-edge',
+    style: {
+      'line-color': '#EF4444',
+      'target-arrow-color': '#EF4444',
+      'width': 3,
+    },
+  },
+  // Duration override node
+  {
+    selector: 'node.duration-override',
+    style: {
+      'border-color': '#8B5CF6',
+      'border-width': 3,
+      'border-style': 'dashed',
+    },
+  },
+  // Critical path nodes when dimmed (still more visible)
+  {
+    selector: 'node.critical-path.dimmed',
+    style: {
+      'opacity': 0.45,
+    },
+  },
+  // Critical path edges when dimmed
+  {
+    selector: 'edge.critical-edge.dimmed',
+    style: {
+      'opacity': 0.35,
+    },
+  },
 ];
