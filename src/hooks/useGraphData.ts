@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { Job, JobMetadata } from '../types';
 import { validateJobData } from '../utils/validation';
+import sampleData from '../../public/sample-data.json';
 
 interface UseGraphDataReturn {
   jobs: Job[];
@@ -8,7 +9,7 @@ interface UseGraphDataReturn {
   error: string | null;
   loadFromJson: (json: unknown) => void;
   loadFromFile: (file: File) => Promise<void>;
-  loadSampleData: () => Promise<void>;
+  loadSampleData: () => void;
 }
 
 export function useGraphData(): UseGraphDataReturn {
@@ -43,14 +44,8 @@ export function useGraphData(): UseGraphDataReturn {
     [loadFromJson]
   );
 
-  const loadSampleData = useCallback(async () => {
-    try {
-      const res = await fetch('/sample-data.json');
-      const json: unknown = await res.json();
-      loadFromJson(json);
-    } catch (e) {
-      setError(`Failed to load sample data: ${e instanceof Error ? e.message : String(e)}`);
-    }
+  const loadSampleData = useCallback(() => {
+    loadFromJson(sampleData);
   }, [loadFromJson]);
 
   return { jobs, metadata, error, loadFromJson, loadFromFile, loadSampleData };
