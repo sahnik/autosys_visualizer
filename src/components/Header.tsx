@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import type { LayoutName } from '../types';
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   hasData: boolean;
   timingEnabled: boolean;
   onTimingToggle: () => void;
+  onExport: (format: 'png' | 'svg') => void;
 }
 
 export default function Header({
@@ -21,8 +22,11 @@ export default function Header({
   hasData,
   timingEnabled,
   onTimingToggle,
+  onExport,
 }: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -30,6 +34,22 @@ export default function Header({
       onImport(file);
       e.target.value = '';
     }
+  };
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportOpen]);
+
+  const handleExportClick = (format: 'png' | 'svg') => {
+    onExport(format);
+    setExportOpen(false);
   };
 
   return (
@@ -72,6 +92,35 @@ export default function Header({
         >
           Import
         </button>
+
+        <div ref={exportRef} className="relative">
+          <button
+            onClick={() => setExportOpen((prev) => !prev)}
+            disabled={!hasData}
+            className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+          >
+            Export
+            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 5l3 3 3-3" />
+            </svg>
+          </button>
+          {exportOpen && (
+            <div className="absolute right-0 mt-1 w-40 bg-gray-700 border border-gray-600 rounded shadow-lg z-50">
+              <button
+                onClick={() => handleExportClick('png')}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-600 rounded-t transition-colors"
+              >
+                Export as PNG
+              </button>
+              <button
+                onClick={() => handleExportClick('svg')}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-600 rounded-b transition-colors"
+              >
+                Export as SVG
+              </button>
+            </div>
+          )}
+        </div>
 
         <select
           value={layout}

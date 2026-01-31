@@ -4,6 +4,7 @@ import { useGraphData } from '../hooks/useGraphData';
 import { useSelection } from '../hooks/useSelection';
 import { useTimingAnalysis } from '../hooks/useTimingAnalysis';
 import { getUpstream, getDownstream } from '../utils/graphUtils';
+import { exportAsPng, exportAsSvg } from '../utils/exportGraph';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import GraphCanvas from './GraphCanvas';
@@ -51,6 +52,12 @@ export default function App() {
     cyRef.current?.fit(undefined, 40);
   }, [cyRef]);
 
+  const handleExport = useCallback((format: 'png' | 'svg') => {
+    if (!cyRef.current) return;
+    if (format === 'png') exportAsPng(cyRef.current);
+    else exportAsSvg(cyRef.current);
+  }, [cyRef]);
+
   return (
     <div className="h-screen flex flex-col">
       <Header
@@ -62,6 +69,7 @@ export default function App() {
         hasData={jobs.length > 0}
         timingEnabled={timingEnabled}
         onTimingToggle={toggleTiming}
+        onExport={handleExport}
       />
 
       {error && (
