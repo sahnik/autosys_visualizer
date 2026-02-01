@@ -37,6 +37,12 @@ interface SidebarProps {
   annotation?: Annotation;
   onSetAnnotation?: (jobId: string, text: string, color: AnnotationColor) => void;
   onRemoveAnnotation?: (jobId: string) => void;
+  isJobFixed?: boolean;
+  hasLastRunStart?: boolean;
+  onToggleFixed?: (jobId: string, fixed: boolean) => void;
+  totalWaitTime?: number;
+  fixedJobCount?: number;
+  referenceTime?: string;
 }
 
 export default function Sidebar({
@@ -66,6 +72,12 @@ export default function Sidebar({
   annotation,
   onSetAnnotation,
   onRemoveAnnotation,
+  isJobFixed = false,
+  hasLastRunStart = false,
+  onToggleFixed,
+  totalWaitTime = 0,
+  fixedJobCount = 0,
+  referenceTime = '',
 }: SidebarProps) {
   const selectedTiming = selectedJob && timingResult
     ? timingResult.nodeTiming.get(selectedJob.id) ?? null
@@ -152,6 +164,9 @@ export default function Sidebar({
             annotation={annotation}
             onSetAnnotation={onSetAnnotation}
             onRemoveAnnotation={onRemoveAnnotation}
+            isJobFixed={isJobFixed}
+            hasLastRunStart={hasLastRunStart}
+            onToggleFixed={onToggleFixed}
           />
         </div>
 
@@ -175,6 +190,9 @@ export default function Sidebar({
             criticalPathLength={timingResult.criticalPath.length}
             overrideCount={durationOverrides.size}
             onResetAll={onResetAllOverrides}
+            totalWaitTime={totalWaitTime}
+            fixedJobCount={fixedJobCount}
+            referenceTime={referenceTime}
           />
         </div>
       )}

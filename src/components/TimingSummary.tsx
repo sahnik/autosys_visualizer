@@ -4,6 +4,9 @@ interface TimingSummaryProps {
   criticalPathLength: number;
   overrideCount: number;
   onResetAll: () => void;
+  totalWaitTime?: number;
+  fixedJobCount?: number;
+  referenceTime?: string;
 }
 
 function formatDuration(minutes: number): string {
@@ -19,6 +22,9 @@ export default function TimingSummary({
   criticalPathLength,
   overrideCount,
   onResetAll,
+  totalWaitTime = 0,
+  fixedJobCount = 0,
+  referenceTime = '',
 }: TimingSummaryProps) {
   const delta = baselineDuration != null && overrideCount > 0
     ? totalDuration - baselineDuration
@@ -40,6 +46,27 @@ export default function TimingSummary({
           <span className="text-gray-500">Critical Path:</span>
           <span className="text-red-400">{criticalPathLength} jobs</span>
         </div>
+
+        {fixedJobCount > 0 && (
+          <div className="flex justify-between">
+            <span className="text-gray-500">Fixed Jobs:</span>
+            <span className="text-amber-400">{fixedJobCount} pinned</span>
+          </div>
+        )}
+
+        {totalWaitTime > 0 && (
+          <div className="flex justify-between">
+            <span className="text-gray-500">Wait Time (critical):</span>
+            <span className="text-amber-400">{formatDuration(totalWaitTime)} unavoidable</span>
+          </div>
+        )}
+
+        {referenceTime && (
+          <div className="flex justify-between">
+            <span className="text-gray-500">Reference (T=0):</span>
+            <span className="text-gray-300">{referenceTime}</span>
+          </div>
+        )}
 
         {overrideCount > 0 && (
           <div className="flex justify-between">

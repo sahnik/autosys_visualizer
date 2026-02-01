@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import type { Job } from '../types';
-import { computeTiming, type TimingAnalysis } from '../utils/timingAnalysis';
+import { computeTiming, computeFixedStartOffsets, type TimingAnalysis } from '../utils/timingAnalysis';
+import { useFixedTimeOverrides } from './useFixedTimeOverrides';
 
 interface UseTimingAnalysisReturn {
   timingEnabled: boolean;
@@ -11,6 +12,10 @@ interface UseTimingAnalysisReturn {
   setDurationOverride: (jobId: string, duration: number) => void;
   clearDurationOverride: (jobId: string) => void;
   resetAllOverrides: () => void;
+  isJobFixed: (jobId: string, importDefault: boolean) => boolean;
+  setFixedTimeOverride: (jobId: string, fixed: boolean) => void;
+  clearAllFixedTimeOverrides: () => void;
+  resolvedFixedFlags: Map<string, boolean>;
 }
 
 export function useTimingAnalysis(jobs: Job[]): UseTimingAnalysisReturn {
@@ -18,19 +23,34 @@ export function useTimingAnalysis(jobs: Job[]): UseTimingAnalysisReturn {
   const [durationOverrides, setDurationOverrides] = useState<Map<string, number>>(new Map());
   const baselineRef = useRef<number | null>(null);
 
+  const {
+    isJobFixed,
+    setFixedTimeOverride,
+    clearAllFixedTimeOverrides,
+    resolvedFixedFlags,
+  } = useFixedTimeOverrides(jobs);
+
+  // Compute fixed start offsets from wall-clock times
+  const fixedStartData = useMemo(() => {
+    if (!timingEnabled || jobs.length === 0) return { offsets: new Map<string, number>(), referenceTime: '' };
+    return computeFixedStartOffsets(jobs, resolvedFixedFlags);
+  }, [timingEnabled, jobs, resolvedFixedFlags]);
+
   const timingResult = useMemo(() => {
     if (!timingEnabled || jobs.length === 0) return null;
-    return computeTiming(jobs, durationOverrides);
-  }, [timingEnabled, jobs, durationOverrides]);
+    const result = computeTiming(jobs, durationOverrides, fixedStartData.offsets);
+    result.referenceTime = fixedStartData.referenceTime;
+    return result;
+  }, [timingEnabled, jobs, durationOverrides, fixedStartData]);
 
-  // Compute baseline once when timing is enabled (no overrides)
+  // Compute baseline once when timing is enabled (no overrides, but with fixed offsets)
   const baselineDuration = useMemo(() => {
     if (!timingEnabled || jobs.length === 0) return null;
     if (baselineRef.current !== null) return baselineRef.current;
-    const baseline = computeTiming(jobs).totalDuration;
+    const baseline = computeTiming(jobs, new Map(), fixedStartData.offsets).totalDuration;
     baselineRef.current = baseline;
     return baseline;
-  }, [timingEnabled, jobs]);
+  }, [timingEnabled, jobs, fixedStartData]);
 
   const toggleTiming = useCallback(() => {
     setTimingEnabled((prev) => {
@@ -72,5 +92,9 @@ export function useTimingAnalysis(jobs: Job[]): UseTimingAnalysisReturn {
     setDurationOverride,
     clearDurationOverride,
     resetAllOverrides,
+    isJobFixed,
+    setFixedTimeOverride,
+    clearAllFixedTimeOverrides,
+    resolvedFixedFlags,
   };
 }

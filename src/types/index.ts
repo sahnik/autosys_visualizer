@@ -16,6 +16,9 @@ export interface Job {
   condition?: string;
   schedule?: string;
   avgDurationMinutes?: number;
+  lastRunStart?: string;     // "HH:MM" wall-clock time
+  lastRunEnd?: string;       // "HH:MM" wall-clock time
+  fixedStartTime?: boolean;  // true = lastRunStart is a scheduling floor
   tablesRead?: string[];
   tablesWritten?: string[];
   tags?: string[];

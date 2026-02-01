@@ -9,8 +9,9 @@ Interactive web-based tool for visualizing Autosys batch job workflows as direct
 - **Search & filter** — find jobs by name; toggle visibility by job type
 - **Node selection** — click a node to view full job details (command, schedule, dependencies, tags, tables, custom attributes) in the sidebar; upstream/downstream counts shown in the status bar
 - **Timing analysis** — toggle to run a forward-pass critical-path calculation; view earliest start/finish, duration, and total pipeline time; override individual job durations for what-if scenarios
+- **Fixed-time jobs** — mark jobs with wall-clock scheduling constraints as "fixed in time"; the critical path analysis accounts for unavoidable wait time when a job can't start until its fixed time regardless of upstream completion; amber visual indicators on graph nodes and sidebar details
 - **Export** — download the full graph as PNG (2x resolution) or SVG with dark background preserved
-- **Sample data** — built-in 20-job ETL pipeline demo; or import your own JSON file
+- **Sample data** — built-in ETL pipeline demo with wall-clock times and fixed-time jobs; or import your own JSON file
 - **Database explorer** — open a SQLite file, search thousands of jobs by name, expand N levels upstream/downstream, and progressively explore the graph via ghost nodes at the frontier
 
 ## Getting Started
@@ -86,6 +87,9 @@ Import a JSON file with the following structure:
       "command": "/scripts/run.sh",
       "schedule": "0 2 * * *",
       "avgDurationMinutes": 15,
+      "lastRunStart": "02:15",
+      "lastRunEnd": "02:30",
+      "fixedStartTime": true,
       "condition": "s(parent_job)",
       "tags": ["etl", "daily"],
       "tablesRead": ["staging.orders"],
@@ -98,6 +102,8 @@ Import a JSON file with the following structure:
 
 **Required fields per job:** `id`, `name`, `dependencies` (array, may be empty).
 All other fields are optional. The `metadata` object is also optional.
+
+**Fixed-time fields:** `lastRunStart` and `lastRunEnd` are `"HH:MM"` wall-clock times from the last job run. Set `fixedStartTime: true` to mark a job as pinned to its `lastRunStart` time — the critical path analysis will treat this as a scheduling floor that cannot be optimized away.
 
 ### SQLite Database (Explorer Mode)
 
@@ -121,6 +127,9 @@ Click **Open Database** and select a `.sqlite` or `.db` file. The database must 
 | `tables_read` | TEXT | | JSON array of table names this job reads from. |
 | `tables_written` | TEXT | | JSON array of table names this job writes to. |
 | `custom_attributes` | TEXT | | JSON object of arbitrary key-value pairs. |
+| `last_run_start` | TEXT | | Wall-clock start time of last run in `HH:MM` format (e.g. `"03:15"`). Used for fixed-time analysis. |
+| `last_run_end` | TEXT | | Wall-clock end time of last run in `HH:MM` format. |
+| `fixed_start_time` | INTEGER | | `1` if this job has a fixed scheduling constraint (pinned to `last_run_start`). |
 
 #### `job_dependencies` table
 
@@ -148,7 +157,10 @@ CREATE TABLE jobs (
   tags TEXT,
   tables_read TEXT,
   tables_written TEXT,
-  custom_attributes TEXT
+  custom_attributes TEXT,
+  last_run_start TEXT,
+  last_run_end TEXT,
+  fixed_start_time INTEGER
 );
 
 CREATE TABLE job_dependencies (
@@ -167,6 +179,8 @@ A typical extraction approach:
 2. **Export dependencies** — parse the `condition` field of each job to extract referenced job names. For example, `s(JOB_A) & s(JOB_B)` means this job depends on `JOB_A` and `JOB_B`. Insert one row per dependency into `job_dependencies`. Box-child relationships (jobs inside a box) should also be represented as dependencies.
 
 3. **Compute durations** — optionally query run history to compute `avg_duration_minutes` per job for timing analysis.
+
+4. **Last run times** — optionally populate `last_run_start` and `last_run_end` with `HH:MM` wall-clock times from the most recent run. Set `fixed_start_time = 1` for jobs with hard scheduling constraints (e.g. regulatory windows, external data availability) to enable fixed-time critical path analysis.
 
 Example extraction sketch (adjust for your environment):
 
@@ -217,7 +231,7 @@ src/
 ├── components/       # React components (App, Header, Sidebar, GraphCanvas,
 │                     #   ExplorerSearchInput, ExpansionControls, ExplorerStatusPanel, etc.)
 ├── hooks/            # Custom hooks (useAppMode, useExplorerData, useGraphData,
-│                     #   useSelection, useTimingAnalysis)
+│                     #   useSelection, useTimingAnalysis, useFixedTimeOverrides)
 ├── services/         # SQLite service (database abstraction layer)
 ├── utils/            # Pure functions (validation, data transform, graph traversal,
 │                     #   timing analysis, incremental graph update, export)

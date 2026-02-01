@@ -15,6 +15,8 @@
       "dependencies": [],
       "schedule": "0 1 * * *",
       "avgDurationMinutes": 1,
+      "lastRunStart": "01:00",
+      "lastRunEnd": "01:01",
       "tags": ["trigger", "daily"]
     },
     {
@@ -26,6 +28,8 @@
       "owner": "batch_ops",
       "dependencies": ["TRIG_DAILY_BATCH"],
       "avgDurationMinutes": 5,
+      "lastRunStart": "01:01",
+      "lastRunEnd": "01:06",
       "tags": ["file_watcher", "customer"]
     },
     {
@@ -37,6 +41,8 @@
       "owner": "batch_ops",
       "dependencies": ["TRIG_DAILY_BATCH"],
       "avgDurationMinutes": 5,
+      "lastRunStart": "01:01",
+      "lastRunEnd": "01:06",
       "tags": ["file_watcher", "account"]
     },
     {
@@ -48,6 +54,8 @@
       "owner": "batch_ops",
       "dependencies": ["TRIG_DAILY_BATCH"],
       "avgDurationMinutes": 10,
+      "lastRunStart": "01:01",
+      "lastRunEnd": "01:11",
       "tags": ["file_watcher", "transaction"]
     },
     {
@@ -60,6 +68,8 @@
       "command": "/scripts/extract_customers.sh",
       "dependencies": ["FW_CUSTOMER_FILE"],
       "avgDurationMinutes": 15,
+      "lastRunStart": "01:06",
+      "lastRunEnd": "01:21",
       "tablesRead": ["CUSTOMER_RAW"],
       "tablesWritten": ["CUSTOMER_STAGE"],
       "tags": ["extract", "customer"]
@@ -74,6 +84,8 @@
       "command": "/scripts/extract_accounts.sh",
       "dependencies": ["FW_ACCOUNT_FILE"],
       "avgDurationMinutes": 20,
+      "lastRunStart": "01:06",
+      "lastRunEnd": "01:26",
       "tablesRead": ["ACCOUNT_RAW"],
       "tablesWritten": ["ACCOUNT_STAGE"],
       "tags": ["extract", "account"]
@@ -88,6 +100,8 @@
       "command": "/scripts/extract_transactions.sh",
       "dependencies": ["FW_TRANSACTION_FILE"],
       "avgDurationMinutes": 45,
+      "lastRunStart": "01:11",
+      "lastRunEnd": "01:56",
       "tablesRead": ["TRANSACTION_RAW"],
       "tablesWritten": ["TRANSACTION_STAGE"],
       "tags": ["extract", "transaction", "critical"]
@@ -102,6 +116,8 @@
       "command": "/scripts/validate_customers.sh",
       "dependencies": ["EXT_CUSTOMER_DATA"],
       "avgDurationMinutes": 10,
+      "lastRunStart": "01:21",
+      "lastRunEnd": "01:31",
       "tags": ["validation", "customer"]
     },
     {
@@ -114,6 +130,8 @@
       "command": "/scripts/validate_accounts.sh",
       "dependencies": ["EXT_ACCOUNT_DATA"],
       "avgDurationMinutes": 8,
+      "lastRunStart": "01:26",
+      "lastRunEnd": "01:34",
       "tags": ["validation", "account"]
     },
     {
@@ -126,6 +144,8 @@
       "command": "/scripts/validate_transactions.sh",
       "dependencies": ["EXT_TRANSACTION_DATA"],
       "avgDurationMinutes": 15,
+      "lastRunStart": "01:56",
+      "lastRunEnd": "02:11",
       "tags": ["validation", "transaction"]
     },
     {
@@ -138,6 +158,9 @@
       "dependencies": ["VAL_CUSTOMER_DATA", "VAL_ACCOUNT_DATA", "VAL_TRANSACTION_DATA"],
       "condition": "s(VAL_CUSTOMER_DATA) & s(VAL_ACCOUNT_DATA) & s(VAL_TRANSACTION_DATA)",
       "avgDurationMinutes": 1,
+      "lastRunStart": "03:15",
+      "lastRunEnd": "03:16",
+      "fixedStartTime": true,
       "tags": ["condition", "checkpoint"]
     },
     {
@@ -150,6 +173,8 @@
       "command": "/scripts/transform_customer_dim.sh",
       "dependencies": ["COND_EXTRACT_DONE"],
       "avgDurationMinutes": 30,
+      "lastRunStart": "03:16",
+      "lastRunEnd": "03:46",
       "tablesRead": ["CUSTOMER_STAGE"],
       "tablesWritten": ["DIM_CUSTOMER"],
       "tags": ["transform", "customer", "dimension"]
@@ -164,6 +189,8 @@
       "command": "/scripts/transform_account_dim.sh",
       "dependencies": ["COND_EXTRACT_DONE"],
       "avgDurationMinutes": 25,
+      "lastRunStart": "03:16",
+      "lastRunEnd": "03:41",
       "tablesRead": ["ACCOUNT_STAGE"],
       "tablesWritten": ["DIM_ACCOUNT"],
       "tags": ["transform", "account", "dimension"]
@@ -178,6 +205,8 @@
       "command": "/scripts/transform_transactions.sh",
       "dependencies": ["COND_EXTRACT_DONE"],
       "avgDurationMinutes": 60,
+      "lastRunStart": "03:16",
+      "lastRunEnd": "04:16",
       "tablesRead": ["TRANSACTION_STAGE", "CUSTOMER_STAGE", "ACCOUNT_STAGE"],
       "tablesWritten": ["FACT_TRANSACTION"],
       "tags": ["transform", "transaction", "fact", "critical"]
@@ -192,6 +221,8 @@
       "dependencies": ["TRF_CUSTOMER_DIM", "TRF_ACCOUNT_DIM", "TRF_TRANSACTION_FACT"],
       "condition": "s(TRF_CUSTOMER_DIM) & s(TRF_ACCOUNT_DIM) & s(TRF_TRANSACTION_FACT)",
       "avgDurationMinutes": 1,
+      "lastRunStart": "04:16",
+      "lastRunEnd": "04:17",
       "tags": ["condition", "checkpoint"]
     },
     {
@@ -204,6 +235,8 @@
       "command": "/scripts/daily_summary_report.sh",
       "dependencies": ["COND_TRANSFORM_DONE"],
       "avgDurationMinutes": 20,
+      "lastRunStart": "04:17",
+      "lastRunEnd": "04:37",
       "tablesRead": ["FACT_TRANSACTION", "DIM_CUSTOMER", "DIM_ACCOUNT"],
       "tags": ["report", "daily"]
     },
@@ -217,6 +250,8 @@
       "command": "/scripts/risk_analysis.sh",
       "dependencies": ["COND_TRANSFORM_DONE"],
       "avgDurationMinutes": 35,
+      "lastRunStart": "04:17",
+      "lastRunEnd": "04:52",
       "tablesRead": ["FACT_TRANSACTION", "DIM_CUSTOMER"],
       "tags": ["report", "risk", "critical"]
     },
@@ -230,6 +265,9 @@
       "command": "/scripts/regulatory_report.sh",
       "dependencies": ["COND_TRANSFORM_DONE"],
       "avgDurationMinutes": 40,
+      "lastRunStart": "05:00",
+      "lastRunEnd": "05:40",
+      "fixedStartTime": true,
       "tablesRead": ["FACT_TRANSACTION", "DIM_CUSTOMER", "DIM_ACCOUNT"],
       "tags": ["report", "regulatory", "critical"],
       "customAttributes": {
@@ -247,6 +285,8 @@
       "command": "/scripts/load_data_mart.sh",
       "dependencies": ["RPT_DAILY_SUMMARY"],
       "avgDurationMinutes": 25,
+      "lastRunStart": "04:37",
+      "lastRunEnd": "05:02",
       "tablesRead": ["FACT_TRANSACTION", "DIM_CUSTOMER", "DIM_ACCOUNT"],
       "tablesWritten": ["DATA_MART_DAILY"],
       "tags": ["load", "data_mart"]
@@ -261,6 +301,8 @@
       "command": "/scripts/notify_downstream.sh",
       "dependencies": ["LOAD_DATA_MART", "RPT_RISK_ANALYSIS", "RPT_REGULATORY"],
       "avgDurationMinutes": 2,
+      "lastRunStart": "05:40",
+      "lastRunEnd": "05:42",
       "tags": ["notification"]
     },
     {
@@ -273,6 +315,8 @@
       "command": "/scripts/cleanup_staging.sh",
       "dependencies": ["NOTIFY_DOWNSTREAM"],
       "avgDurationMinutes": 10,
+      "lastRunStart": "05:42",
+      "lastRunEnd": "05:52",
       "tags": ["cleanup", "maintenance"]
     },
     {
@@ -285,6 +329,8 @@
       "dependencies": ["CLEANUP_STAGING"],
       "condition": "s(CLEANUP_STAGING)",
       "avgDurationMinutes": 1,
+      "lastRunStart": "05:52",
+      "lastRunEnd": "05:53",
       "tags": ["condition", "complete"]
     }
   ]

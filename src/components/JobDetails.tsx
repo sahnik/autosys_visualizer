@@ -15,6 +15,9 @@ interface JobDetailsProps {
   annotation?: Annotation;
   onSetAnnotation?: (jobId: string, text: string, color: AnnotationColor) => void;
   onRemoveAnnotation?: (jobId: string) => void;
+  isJobFixed?: boolean;
+  hasLastRunStart?: boolean;
+  onToggleFixed?: (jobId: string, fixed: boolean) => void;
 }
 
 export default function JobDetails({
@@ -29,6 +32,9 @@ export default function JobDetails({
   annotation,
   onSetAnnotation,
   onRemoveAnnotation,
+  isJobFixed = false,
+  hasLastRunStart = false,
+  onToggleFixed,
 }: JobDetailsProps) {
   if (!job) {
     return (
@@ -160,6 +166,9 @@ export default function JobDetails({
           durationOverride={durationOverride}
           onDurationOverride={onDurationOverride}
           onClearOverride={onClearOverride}
+          isJobFixed={isJobFixed}
+          hasLastRunStart={hasLastRunStart}
+          onToggleFixed={onToggleFixed}
         />
       )}
     </div>
@@ -172,12 +181,18 @@ function TimingSection({
   durationOverride,
   onDurationOverride,
   onClearOverride,
+  isJobFixed = false,
+  hasLastRunStart = false,
+  onToggleFixed,
 }: {
   job: Job;
   timing: TimingResult;
   durationOverride: number | undefined;
   onDurationOverride: (jobId: string, duration: number) => void;
   onClearOverride: (jobId: string) => void;
+  isJobFixed?: boolean;
+  hasLastRunStart?: boolean;
+  onToggleFixed?: (jobId: string, fixed: boolean) => void;
 }) {
   const originalDuration = job.avgDurationMinutes ?? 0;
   const [inputValue, setInputValue] = useState(
@@ -199,7 +214,7 @@ function TimingSection({
 
   return (
     <div className="border-t border-gray-700 pt-2 mt-2 space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Timing</h4>
         {timing.isCritical ? (
           <span className="px-1.5 py-0.5 text-[10px] font-medium bg-red-900/50 text-red-300 rounded">
@@ -210,7 +225,60 @@ function TimingSection({
             Not critical
           </span>
         )}
+        {isJobFixed && (
+          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-900/50 text-amber-300 rounded">
+            Fixed
+          </span>
+        )}
       </div>
+
+      {/* Last run times */}
+      {(job.lastRunStart || job.lastRunEnd) && (
+        <div className="text-xs text-gray-400">
+          Last Run: {job.lastRunStart ?? '?'} - {job.lastRunEnd ?? '?'}
+        </div>
+      )}
+
+      {/* Fixed in time toggle */}
+      {onToggleFixed && (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-gray-500">Fixed in time:</span>
+          <button
+            onClick={() => onToggleFixed(job.id, !isJobFixed)}
+            disabled={!hasLastRunStart}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+              !hasLastRunStart
+                ? 'bg-gray-700 opacity-50 cursor-not-allowed'
+                : isJobFixed
+                  ? 'bg-amber-600'
+                  : 'bg-gray-600 hover:bg-gray-500'
+            }`}
+            title={!hasLastRunStart ? 'No lastRunStart time available' : isJobFixed ? 'Unpin fixed time' : 'Pin to fixed time'}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                isJobFixed ? 'translate-x-4' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      )}
+
+      {/* Wait time */}
+      {timing.waitTime > 0 && (
+        <div className="text-xs text-amber-400">
+          Wait Time: {timing.waitTime}m
+        </div>
+      )}
+
+      {/* Optimization hint for fixed + critical */}
+      {isJobFixed && timing.isCritical && timing.waitTime > 0 && (
+        <div className="text-[10px] text-amber-500/80 italic">
+          {timing.upstreamCanHelp
+            ? 'Upstream already gates past fixed time'
+            : 'Upstream optimization won\'t help \u2014 fixed time is the bottleneck'}
+        </div>
+      )}
 
       <div className="space-y-1.5 text-xs">
         <div className="flex items-center justify-between gap-2">

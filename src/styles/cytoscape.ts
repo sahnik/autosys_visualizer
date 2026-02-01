@@ -156,6 +156,31 @@ export const cytoscapeStylesheet: StyleEntry[] = [
       'border-style': 'dashed',
     },
   },
+  // Fixed-time node: amber double border
+  {
+    selector: 'node.fixed-time',
+    style: {
+      'border-color': '#F59E0B',
+      'border-width': 3,
+      'border-style': 'double',
+    },
+  },
+  // Fixed-time node on critical path: amber double border takes priority
+  {
+    selector: 'node.fixed-time.critical-path',
+    style: {
+      'border-color': '#F59E0B',
+      'border-width': 4,
+      'border-style': 'double',
+    },
+  },
+  // Node with wait time: dark amber background tint
+  {
+    selector: 'node.has-wait-time',
+    style: {
+      'background-color': '#78350F',
+    },
+  },
   // Critical path nodes when dimmed (still more visible)
   {
     selector: 'node.critical-path.dimmed',

@@ -49,6 +49,21 @@ export function validateJobData(raw: unknown): ValidationResult {
       continue;
     }
 
+    // Soft validation for optional fixed-time fields
+    if (job.lastRunStart !== undefined && typeof job.lastRunStart === 'string') {
+      if (!/^\d{1,2}:\d{2}$/.test(job.lastRunStart)) {
+        errors.push(`Job "${job.id}": "lastRunStart" must be in HH:MM format`);
+      }
+    }
+    if (job.lastRunEnd !== undefined && typeof job.lastRunEnd === 'string') {
+      if (!/^\d{1,2}:\d{2}$/.test(job.lastRunEnd as string)) {
+        errors.push(`Job "${job.id}": "lastRunEnd" must be in HH:MM format`);
+      }
+    }
+    if (job.fixedStartTime !== undefined && typeof job.fixedStartTime !== 'boolean') {
+      errors.push(`Job "${job.id}": "fixedStartTime" must be a boolean`);
+    }
+
     ids.add(job.id);
     jobs.push(job as unknown as Job);
   }

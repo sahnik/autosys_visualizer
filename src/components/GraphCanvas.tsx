@@ -271,7 +271,7 @@ export default function GraphCanvas({
     const cy = cyRef.current;
     if (!cy) return;
 
-    const timingClasses = ['timing-active', 'critical-path', 'critical-edge', 'duration-override'];
+    const timingClasses = ['timing-active', 'critical-path', 'critical-edge', 'duration-override', 'fixed-time', 'has-wait-time'];
 
     if (!timingEnabled || !timingResult) {
       // Remove all timing classes and restore labels
@@ -304,7 +304,14 @@ export default function GraphCanvas({
         if (!timing) return;
 
         const dur = timing.effectiveDuration;
-        const label = `${node.data('name') as string}\n\u23F1 ${dur}m`;
+        let label: string;
+        if (timing.isFixed && timing.waitTime > 0) {
+          label = `${node.data('name') as string}\n\u{1F4CC} ${dur}m (+${timing.waitTime}m wait)`;
+        } else if (timing.isFixed) {
+          label = `${node.data('name') as string}\n\u{1F4CC} ${dur}m`;
+        } else {
+          label = `${node.data('name') as string}\n\u23F1 ${dur}m`;
+        }
         node.data('label', label);
         node.addClass('timing-active');
 
@@ -314,6 +321,14 @@ export default function GraphCanvas({
 
         if (durationOverrides.has(id)) {
           node.addClass('duration-override');
+        }
+
+        if (timing.isFixed) {
+          node.addClass('fixed-time');
+        }
+
+        if (timing.waitTime > 0) {
+          node.addClass('has-wait-time');
         }
       });
 

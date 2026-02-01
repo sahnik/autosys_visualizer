@@ -44,6 +44,8 @@ export default function App() {
     setDurationOverride,
     clearDurationOverride,
     resetAllOverrides,
+    setFixedTimeOverride,
+    resolvedFixedFlags,
   } = useTimingAnalysis(jobs);
 
   const {
@@ -94,6 +96,30 @@ export default function App() {
     if (!selectedJobId || !cyRef.current) return 0;
     return getDownstream(cyRef.current, selectedJobId).length;
   }, [selectedJobId, cyRef]);
+
+  // Compute fixed-time info for selected job and summary
+  const selectedIsFixed = useMemo(() => {
+    if (!selectedJobId) return false;
+    return resolvedFixedFlags.get(selectedJobId) ?? false;
+  }, [selectedJobId, resolvedFixedFlags]);
+
+  const selectedHasLastRunStart = useMemo(() => {
+    const job = selectedJob ?? selectedJobOrGhost;
+    if (!job) return false;
+    return !!job.lastRunStart;
+  }, [selectedJob, selectedJobOrGhost]);
+
+  const fixedJobCount = useMemo(() => {
+    let count = 0;
+    for (const v of resolvedFixedFlags.values()) {
+      if (v) count++;
+    }
+    return count;
+  }, [resolvedFixedFlags]);
+
+  const handleToggleFixed = useCallback((jobId: string, fixed: boolean) => {
+    setFixedTimeOverride(jobId, fixed);
+  }, [setFixedTimeOverride]);
 
   const handleFilterToggle = useCallback((type: string) => {
     setTypeFilters((prev) => ({ ...prev, [type]: prev[type] !== false ? false : true }));
@@ -200,6 +226,12 @@ export default function App() {
           annotation={selectedJobId ? annotations.get(selectedJobId) : undefined}
           onSetAnnotation={setAnnotation}
           onRemoveAnnotation={removeAnnotation}
+          isJobFixed={selectedIsFixed}
+          hasLastRunStart={selectedHasLastRunStart}
+          onToggleFixed={handleToggleFixed}
+          totalWaitTime={timingResult?.totalWaitTime ?? 0}
+          fixedJobCount={fixedJobCount}
+          referenceTime={timingResult?.referenceTime ?? ''}
         />
 
         {hasData || (mode === 'explorer' && dbOpen) ? (
