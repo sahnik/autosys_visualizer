@@ -9,6 +9,8 @@ interface JobDetailsProps {
   durationOverride: number | undefined;
   onDurationOverride: (jobId: string, duration: number) => void;
   onClearOverride: (jobId: string) => void;
+  isGhost?: boolean;
+  onMaterialize?: (ghostId: string) => void;
 }
 
 export default function JobDetails({
@@ -18,11 +20,40 @@ export default function JobDetails({
   durationOverride,
   onDurationOverride,
   onClearOverride,
+  isGhost = false,
+  onMaterialize,
 }: JobDetailsProps) {
   if (!job) {
     return (
       <div className="text-sm text-gray-500 italic">
         Click a node to view details
+      </div>
+    );
+  }
+
+  if (isGhost) {
+    return (
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          Ghost Node
+        </h3>
+        <div className="px-3 py-2 bg-blue-900/20 border border-blue-800/40 rounded text-xs text-blue-300">
+          Ghost Node — Click to explore
+        </div>
+        <div>
+          <div className="text-sm font-medium text-gray-100 break-all">{job.name}</div>
+        </div>
+        <div className="space-y-2 text-xs">
+          {job.type && <DetailRow label="Type" value={job.type} />}
+        </div>
+        {onMaterialize && (
+          <button
+            onClick={() => onMaterialize(job.id)}
+            className="w-full px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+          >
+            Materialize
+          </button>
+        )}
       </div>
     );
   }

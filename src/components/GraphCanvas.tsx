@@ -2,9 +2,10 @@ import { useEffect, useCallback, useRef } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import type { Core, EventObject, LayoutOptions } from 'cytoscape';
-import type { Job, LayoutName } from '../types';
+import type { Job, LayoutName, GhostNode } from '../types';
 import type { TimingAnalysis } from '../utils/timingAnalysis';
 import { jobsToCytoscapeElements } from '../utils/dataTransform';
+import { addMaterializedJobs, syncGhostNodes } from '../utils/incrementalGraphUpdate';
 import { cytoscapeStylesheet } from '../styles/cytoscape';
 
 // Register dagre layout
@@ -21,6 +22,9 @@ interface GraphCanvasProps {
   timingEnabled: boolean;
   timingResult: TimingAnalysis | null;
   durationOverrides: Map<string, number>;
+  ghostNodes?: GhostNode[];
+  incrementalMode?: boolean;
+  onGhostClick?: (id: string) => void;
 }
 
 // Use Record<string, unknown> since dagre adds custom options not in base types
@@ -57,9 +61,13 @@ export default function GraphCanvas({
   timingEnabled,
   timingResult,
   durationOverrides,
+  ghostNodes = [],
+  incrementalMode = false,
+  onGhostClick,
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<LayoutName>(layout);
+  const prevJobCountRef = useRef(0);
 
   // Initialize Cytoscape
   useEffect(() => {
@@ -76,7 +84,12 @@ export default function GraphCanvas({
     cyRef.current = cy;
 
     cy.on('tap', 'node', (e: EventObject) => {
-      onNodeSelect(e.target.id());
+      const node = e.target;
+      if (node.data('isGhost') && onGhostClick) {
+        onGhostClick(node.id());
+      } else {
+        onNodeSelect(node.id());
+      }
     });
 
     cy.on('tap', (e: EventObject) => {
@@ -109,18 +122,68 @@ export default function GraphCanvas({
   // Update elements when jobs change
   useEffect(() => {
     const cy = cyRef.current;
-    if (!cy || jobs.length === 0) return;
+    if (!cy) return;
 
-    const elements = jobsToCytoscapeElements(jobs);
-    cy.json({ elements });
-    cy.layout(LAYOUT_OPTIONS[layoutRef.current]).run();
+    if (!incrementalMode) {
+      // JSON mode: full replace
+      if (jobs.length === 0) {
+        cy.elements().remove();
+        prevJobCountRef.current = 0;
+        return;
+      }
+      const elements = jobsToCytoscapeElements(jobs);
+      cy.json({ elements });
+      cy.layout(LAYOUT_OPTIONS[layoutRef.current]).run();
+      setTimeout(() => {
+        cy.fit(undefined, 40);
+        onZoomChange(cy.zoom());
+      }, 50);
+      prevJobCountRef.current = jobs.length;
+    } else {
+      // Explorer / incremental mode
+      if (jobs.length === 0) {
+        cy.elements().remove();
+        prevJobCountRef.current = 0;
+        return;
+      }
 
-    setTimeout(() => {
-      cy.fit(undefined, 40);
-      onZoomChange(cy.zoom());
-    }, 50);
+      const materializedIds = new Set(jobs.map((j) => j.id));
+      const isFirstLoad = prevJobCountRef.current === 0;
+
+      if (isFirstLoad) {
+        // First load in incremental mode: set all at once
+        cy.elements().remove();
+      }
+
+      const newIds = addMaterializedJobs(cy, jobs, materializedIds);
+      syncGhostNodes(cy, ghostNodes, materializedIds);
+
+      if (isFirstLoad || newIds.length > 0) {
+        cy.layout(LAYOUT_OPTIONS[layoutRef.current]).run();
+        setTimeout(() => {
+          if (newIds.length > 0 && !isFirstLoad) {
+            // Animate to newly added elements
+            const newEles = cy.collection();
+            for (const id of newIds) {
+              newEles.merge(cy.getElementById(id));
+            }
+            if (newEles.length > 0) {
+              cy.animate({
+                fit: { eles: cy.elements(), padding: 40 },
+                duration: 300,
+              });
+            }
+          } else {
+            cy.fit(undefined, 40);
+          }
+          onZoomChange(cy.zoom());
+        }, 50);
+      }
+
+      prevJobCountRef.current = jobs.length;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs]);
+  }, [jobs, incrementalMode, ghostNodes]);
 
   // Re-layout when layout changes
   useEffect(() => {

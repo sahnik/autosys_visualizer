@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import type { LayoutName } from '../types';
+import type { LayoutName, AppMode } from '../types';
 
 interface HeaderProps {
   onImport: (file: File) => void;
@@ -11,6 +11,9 @@ interface HeaderProps {
   timingEnabled: boolean;
   onTimingToggle: () => void;
   onExport: (format: 'png' | 'svg') => void;
+  mode: AppMode;
+  onImportSqlite: (file: File) => void;
+  onCloseDatabase: () => void;
 }
 
 export default function Header({
@@ -23,8 +26,12 @@ export default function Header({
   timingEnabled,
   onTimingToggle,
   onExport,
+  mode,
+  onImportSqlite,
+  onCloseDatabase,
 }: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sqliteInputRef = useRef<HTMLInputElement>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
@@ -32,6 +39,14 @@ export default function Header({
     const file = e.target.files?.[0];
     if (file) {
       onImport(file);
+      e.target.value = '';
+    }
+  };
+
+  const handleSqliteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onImportSqlite(file);
       e.target.value = '';
     }
   };
@@ -67,10 +82,15 @@ export default function Header({
             Autosys Visualizer
           </h1>
         </div>
+        {mode === 'explorer' && (
+          <span className="px-2 py-0.5 text-[10px] font-medium bg-blue-900/50 text-blue-300 rounded">
+            Explorer
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
-        {!hasData && (
+        {mode === 'empty' && (
           <button
             onClick={onLoadSample}
             className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 rounded transition-colors"
@@ -90,8 +110,31 @@ export default function Header({
           onClick={() => fileInputRef.current?.click()}
           className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors"
         >
-          Import
+          Import JSON
         </button>
+
+        <input
+          ref={sqliteInputRef}
+          type="file"
+          accept=".sqlite,.db"
+          onChange={handleSqliteChange}
+          className="hidden"
+        />
+        {mode !== 'explorer' ? (
+          <button
+            onClick={() => sqliteInputRef.current?.click()}
+            className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+          >
+            Open Database
+          </button>
+        ) : (
+          <button
+            onClick={onCloseDatabase}
+            className="px-3 py-1.5 text-sm bg-red-800/60 hover:bg-red-700/60 text-red-200 rounded transition-colors"
+          >
+            Close DB
+          </button>
+        )}
 
         <div ref={exportRef} className="relative">
           <button

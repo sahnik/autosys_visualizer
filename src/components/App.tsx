@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { LayoutName } from '../types';
-import { useGraphData } from '../hooks/useGraphData';
+import { useAppMode } from '../hooks/useAppMode';
 import { useSelection } from '../hooks/useSelection';
 import { useTimingAnalysis } from '../hooks/useTimingAnalysis';
 import { getUpstream, getDownstream } from '../utils/graphUtils';
@@ -11,7 +11,28 @@ import GraphCanvas from './GraphCanvas';
 import StatusBar from './StatusBar';
 
 export default function App() {
-  const { jobs, error, loadFromFile, loadSampleData } = useGraphData();
+  const {
+    mode,
+    jobs,
+    ghostNodes,
+    isIncremental,
+    error,
+    loading,
+    loadFromFile,
+    loadSampleData,
+    dbOpen,
+    totalJobCount,
+    materializedCount,
+    ghostCount,
+    openDatabase,
+    closeDatabase,
+    searchAllJobs,
+    setStartingNode,
+    expandFromNode,
+    materializeGhost,
+    clearGraph,
+  } = useAppMode();
+
   const { selectedJobId, selectNode, cyRef } = useSelection();
   const {
     timingEnabled,
@@ -33,6 +54,27 @@ export default function App() {
     () => jobs.find((j) => j.id === selectedJobId) ?? null,
     [jobs, selectedJobId]
   );
+
+  // Check if selected node is a ghost
+  const selectedIsGhost = useMemo(() => {
+    if (!selectedJobId) return false;
+    return ghostNodes.some((g) => g.id === selectedJobId);
+  }, [selectedJobId, ghostNodes]);
+
+  // For ghost nodes that are selected, create a minimal Job object for display
+  const selectedJobOrGhost = useMemo(() => {
+    if (selectedJob) return selectedJob;
+    if (!selectedJobId || !selectedIsGhost) return null;
+    const ghost = ghostNodes.find((g) => g.id === selectedJobId);
+    if (!ghost) return null;
+    // Construct a minimal Job from ghost data
+    return {
+      id: ghost.id,
+      name: ghost.name,
+      type: ghost.type as 'box' | 'command' | 'file_watcher' | 'condition' | undefined,
+      dependencies: [],
+    };
+  }, [selectedJob, selectedJobId, selectedIsGhost, ghostNodes]);
 
   const upstreamCount = useMemo(() => {
     if (!selectedJobId || !cyRef.current) return 0;
@@ -58,6 +100,12 @@ export default function App() {
     else exportAsSvg(cyRef.current);
   }, [cyRef]);
 
+  const handleGhostClick = useCallback((ghostId: string) => {
+    materializeGhost(ghostId);
+  }, [materializeGhost]);
+
+  const hasData = jobs.length > 0;
+
   return (
     <div className="h-screen flex flex-col">
       <Header
@@ -66,15 +114,28 @@ export default function App() {
         layout={layout}
         onLayoutChange={setLayout}
         onFit={handleFit}
-        hasData={jobs.length > 0}
+        hasData={hasData}
         timingEnabled={timingEnabled}
         onTimingToggle={toggleTiming}
         onExport={handleExport}
+        mode={mode}
+        onImportSqlite={openDatabase}
+        onCloseDatabase={closeDatabase}
       />
 
       {error && (
         <div className="px-4 py-2 bg-red-900/50 border-b border-red-700 text-red-200 text-sm">
           {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="px-4 py-2 bg-blue-900/50 border-b border-blue-700 text-blue-200 text-sm flex items-center gap-2">
+          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Loading database...
         </div>
       )}
 
@@ -84,7 +145,7 @@ export default function App() {
           onSearchChange={setSearchQuery}
           filters={typeFilters}
           onFilterToggle={handleFilterToggle}
-          selectedJob={selectedJob}
+          selectedJob={selectedJobOrGhost}
           timingEnabled={timingEnabled}
           timingResult={timingResult}
           baselineDuration={baselineDuration}
@@ -92,9 +153,20 @@ export default function App() {
           onDurationOverride={setDurationOverride}
           onClearOverride={clearDurationOverride}
           onResetAllOverrides={resetAllOverrides}
+          mode={mode}
+          totalJobCount={totalJobCount}
+          materializedCount={materializedCount}
+          ghostCount={ghostCount}
+          onClearGraph={clearGraph}
+          onCloseDatabase={closeDatabase}
+          onSearchDatabase={searchAllJobs}
+          onSetStartingNode={setStartingNode}
+          onExpandFromNode={expandFromNode}
+          onMaterializeGhost={materializeGhost}
+          selectedIsGhost={selectedIsGhost}
         />
 
-        {jobs.length > 0 ? (
+        {hasData || (mode === 'explorer' && dbOpen) ? (
           <GraphCanvas
             jobs={jobs}
             layout={layout}
@@ -106,6 +178,9 @@ export default function App() {
             timingEnabled={timingEnabled}
             timingResult={timingResult}
             durationOverrides={durationOverrides}
+            ghostNodes={ghostNodes}
+            incrementalMode={isIncremental}
+            onGhostClick={handleGhostClick}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -116,7 +191,7 @@ export default function App() {
               </svg>
               <div>
                 <p className="text-lg">No data loaded</p>
-                <p className="text-sm mt-1">Import a JSON file or load sample data to get started</p>
+                <p className="text-sm mt-1">Import a JSON file, open a SQLite database, or load sample data</p>
               </div>
             </div>
           </div>
@@ -132,6 +207,10 @@ export default function App() {
         timingEnabled={timingEnabled}
         totalDuration={timingResult?.totalDuration ?? 0}
         criticalPathLength={timingResult?.criticalPath.length ?? 0}
+        mode={mode}
+        totalDbJobCount={totalJobCount}
+        materializedCount={materializedCount}
+        ghostCount={ghostCount}
       />
     </div>
   );

@@ -1,3 +1,5 @@
+import type { AppMode } from '../types';
+
 interface StatusBarProps {
   jobCount: number;
   selectedJobId: string | null;
@@ -7,6 +9,10 @@ interface StatusBarProps {
   timingEnabled: boolean;
   totalDuration: number;
   criticalPathLength: number;
+  mode?: AppMode;
+  totalDbJobCount?: number;
+  materializedCount?: number;
+  ghostCount?: number;
 }
 
 export default function StatusBar({
@@ -18,11 +24,24 @@ export default function StatusBar({
   timingEnabled,
   totalDuration,
   criticalPathLength,
+  mode = 'json',
+  totalDbJobCount = 0,
+  materializedCount = 0,
+  ghostCount = 0,
 }: StatusBarProps) {
   return (
     <footer className="flex items-center justify-between px-4 py-1.5 bg-gray-800 border-t border-gray-700 text-xs text-gray-400">
       <div className="flex items-center gap-4">
-        <span>{jobCount} jobs loaded</span>
+        {mode === 'explorer' ? (
+          <span>
+            {materializedCount.toLocaleString()} / {totalDbJobCount.toLocaleString()} jobs
+            {ghostCount > 0 && (
+              <span className="text-gray-500"> | {ghostCount} ghosts</span>
+            )}
+          </span>
+        ) : (
+          <span>{jobCount} jobs loaded</span>
+        )}
         {selectedJobId && (
           <>
             <span className="text-gray-600">|</span>

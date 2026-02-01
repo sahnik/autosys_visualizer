@@ -170,4 +170,50 @@ export const cytoscapeStylesheet: StyleEntry[] = [
       'opacity': 0.35,
     },
   },
+  // Ghost node base style
+  {
+    selector: 'node.ghost',
+    style: {
+      'opacity': 0.4,
+      'border-style': 'dashed',
+      'border-width': 2,
+    },
+  },
+  // Ghost upstream variant (blue-tinted)
+  {
+    selector: 'node.ghost-upstream',
+    style: {
+      'border-color': '#60A5FA',
+      'background-color': '#1E3A5F',
+    },
+  },
+  // Ghost downstream variant (green-tinted)
+  {
+    selector: 'node.ghost-downstream',
+    style: {
+      'border-color': '#34D399',
+      'background-color': '#1A3A2A',
+    },
+  },
+  // Ghost edge
+  {
+    selector: 'edge.ghost-edge',
+    style: {
+      'line-style': 'dashed',
+      'opacity': 0.35,
+      'width': 1,
+      'line-color': '#4B5563',
+      'target-arrow-color': '#4B5563',
+      'target-arrow-shape': 'triangle',
+      'curve-style': 'bezier',
+      'arrow-scale': 0.6,
+    },
+  },
+  // Ghost hover (hints clickability)
+  {
+    selector: 'node.ghost:active',
+    style: {
+      'opacity': 0.7,
+    },
+  },
 ];

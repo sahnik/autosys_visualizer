@@ -5,4 +5,10 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 export default defineConfig({
   plugins: [react(), viteSingleFile()],
   base: './',
+  optimizeDeps: {
+    exclude: ['sql.js'],
+  },
+  build: {
+    target: 'esnext',
+  },
 })

@@ -29,6 +29,16 @@ export interface JobData {
 
 export type LayoutName = 'dagre' | 'breadthfirst' | 'concentric';
 
+export type AppMode = 'empty' | 'json' | 'explorer';
+
+export interface GhostNode {
+  id: string;
+  name: string;
+  type?: string;
+  direction: 'upstream' | 'downstream';
+  connectedTo: string;
+}
+
 export interface AppState {
   jobs: Job[];
   metadata: JobMetadata | null;
