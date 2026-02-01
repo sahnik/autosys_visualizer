@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import type { Job } from '../types';
+import type { Job, Annotation, AnnotationColor } from '../types';
 import type { TimingResult } from '../utils/timingAnalysis';
+import { ANNOTATION_COLORS } from '../utils/annotationNodes';
 
 interface JobDetailsProps {
   job: Job | null;
@@ -11,6 +12,9 @@ interface JobDetailsProps {
   onClearOverride: (jobId: string) => void;
   isGhost?: boolean;
   onMaterialize?: (ghostId: string) => void;
+  annotation?: Annotation;
+  onSetAnnotation?: (jobId: string, text: string, color: AnnotationColor) => void;
+  onRemoveAnnotation?: (jobId: string) => void;
 }
 
 export default function JobDetails({
@@ -22,6 +26,9 @@ export default function JobDetails({
   onClearOverride,
   isGhost = false,
   onMaterialize,
+  annotation,
+  onSetAnnotation,
+  onRemoveAnnotation,
 }: JobDetailsProps) {
   if (!job) {
     return (
@@ -137,6 +144,15 @@ export default function JobDetails({
         )}
       </div>
 
+      {!isGhost && onSetAnnotation && (
+        <AnnotationSection
+          job={job}
+          annotation={annotation}
+          onSetAnnotation={onSetAnnotation}
+          onRemoveAnnotation={onRemoveAnnotation}
+        />
+      )}
+
       {timingEnabled && timingResult && (
         <TimingSection
           job={job}
@@ -233,6 +249,104 @@ function TimingSection({
 
         <DetailRow label="Earliest Start" value={`${timing.earliestStart}m from start`} />
         <DetailRow label="Earliest Finish" value={`${timing.earliestFinish}m from start`} />
+      </div>
+    </div>
+  );
+}
+
+function AnnotationSection({
+  job,
+  annotation,
+  onSetAnnotation,
+  onRemoveAnnotation,
+}: {
+  job: Job;
+  annotation?: Annotation;
+  onSetAnnotation: (jobId: string, text: string, color: AnnotationColor) => void;
+  onRemoveAnnotation?: (jobId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(!!annotation);
+  const [text, setText] = useState(annotation?.text ?? '');
+  const [color, setColor] = useState<AnnotationColor>(annotation?.color ?? 'yellow');
+
+  // Reset form when selected job changes
+  const [prevJobId, setPrevJobId] = useState(job.id);
+  if (job.id !== prevJobId) {
+    setPrevJobId(job.id);
+    setText(annotation?.text ?? '');
+    setColor(annotation?.color ?? 'yellow');
+    setExpanded(!!annotation);
+  }
+
+  const handleSave = () => {
+    onSetAnnotation(job.id, text, color);
+  };
+
+  const handleRemove = () => {
+    onRemoveAnnotation?.(job.id);
+    setText('');
+    setColor('yellow');
+    setExpanded(false);
+  };
+
+  if (!expanded && !annotation) {
+    return (
+      <div className="border-t border-gray-700 pt-2 mt-2">
+        <button
+          onClick={() => setExpanded(true)}
+          className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+        >
+          + Add Note
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-gray-700 pt-2 mt-2 space-y-2">
+      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Annotation</h4>
+
+      <div className="flex gap-1.5">
+        {ANNOTATION_COLORS.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setColor(c.id)}
+            className="w-5 h-5 rounded-full border-2 transition-transform"
+            style={{
+              backgroundColor: c.bg,
+              borderColor: color === c.id ? '#FFFFFF' : c.border,
+              transform: color === c.id ? 'scale(1.2)' : 'scale(1)',
+            }}
+            title={c.id}
+          />
+        ))}
+      </div>
+
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value.slice(0, 80))}
+        maxLength={80}
+        rows={2}
+        placeholder="Add a note..."
+        className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-gray-200 resize-none"
+      />
+      <div className="text-[10px] text-gray-500 text-right">{text.length}/80</div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          className="flex-1 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+        >
+          Save
+        </button>
+        {annotation && (
+          <button
+            onClick={handleRemove}
+            className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded transition-colors"
+          >
+            Remove
+          </button>
+        )}
       </div>
     </div>
   );

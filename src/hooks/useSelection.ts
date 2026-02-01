@@ -33,15 +33,26 @@ export function useSelection(): UseSelectionReturn {
 
     // Dim all unrelated nodes
     cy.nodes().forEach((node) => {
-      if (!relatedIds.has(node.id())) {
-        node.addClass('dimmed');
+      const nodeId2 = node.id();
+      if (relatedIds.has(nodeId2)) return;
+      // Note nodes follow their parent job's dimming state
+      if (node.data('isNote')) {
+        const parentJobId = node.data('parentJobId') as string;
+        if (parentJobId && relatedIds.has(parentJobId)) return;
       }
+      node.addClass('dimmed');
     });
 
     // Dim unrelated edges, highlight related
     cy.edges().forEach((edge) => {
       if (connectedEdgeIds.includes(edge.id())) {
         edge.addClass('highlighted');
+      } else if (edge.hasClass('note-edge')) {
+        // Note edges follow their source job's dimming state
+        const sourceId = edge.data('source') as string;
+        if (!relatedIds.has(sourceId)) {
+          edge.addClass('dimmed');
+        }
       } else {
         edge.addClass('dimmed');
       }

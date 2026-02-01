@@ -2,10 +2,11 @@ import { useEffect, useCallback, useRef } from 'react';
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import type { Core, EventObject, LayoutOptions } from 'cytoscape';
-import type { Job, LayoutName, GhostNode } from '../types';
+import type { Job, LayoutName, GhostNode, Annotation } from '../types';
 import type { TimingAnalysis } from '../utils/timingAnalysis';
 import { jobsToCytoscapeElements } from '../utils/dataTransform';
 import { addMaterializedJobs, syncGhostNodes } from '../utils/incrementalGraphUpdate';
+import { syncAnnotationNodes, positionNoteNodes } from '../utils/annotationNodes';
 import { cytoscapeStylesheet } from '../styles/cytoscape';
 
 // Register dagre layout
@@ -25,6 +26,7 @@ interface GraphCanvasProps {
   ghostNodes?: GhostNode[];
   incrementalMode?: boolean;
   onGhostClick?: (id: string) => void;
+  annotations?: Map<string, Annotation>;
 }
 
 // Use Record<string, unknown> since dagre adds custom options not in base types
@@ -64,10 +66,23 @@ export default function GraphCanvas({
   ghostNodes = [],
   incrementalMode = false,
   onGhostClick,
+  annotations,
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<LayoutName>(layout);
   const prevJobCountRef = useRef(0);
+  const annotationsRef = useRef(annotations);
+  annotationsRef.current = annotations;
+
+  // Run layout excluding note nodes, then position notes after
+  const runLayout = useCallback((cy: Core, layoutName: LayoutName) => {
+    const nonNoteEles = cy.elements().not('.note, .note-edge');
+    if (nonNoteEles.nodes().length === 0) return;
+    nonNoteEles.layout(LAYOUT_OPTIONS[layoutName]).run();
+    setTimeout(() => {
+      positionNoteNodes(cy);
+    }, 10);
+  }, []);
 
   // Initialize Cytoscape
   useEffect(() => {
@@ -85,6 +100,7 @@ export default function GraphCanvas({
 
     cy.on('tap', 'node', (e: EventObject) => {
       const node = e.target;
+      if (node.data('isNote')) return; // Ignore clicks on note nodes
       if (node.data('isGhost') && onGhostClick) {
         onGhostClick(node.id());
       } else {
@@ -133,8 +149,13 @@ export default function GraphCanvas({
       }
       const elements = jobsToCytoscapeElements(jobs);
       cy.json({ elements });
-      cy.layout(LAYOUT_OPTIONS[layoutRef.current]).run();
+      // Re-sync annotations after full replace (cy.json wipes custom nodes)
+      if (annotationsRef.current && annotationsRef.current.size > 0) {
+        syncAnnotationNodes(cy, annotationsRef.current);
+      }
+      runLayout(cy, layoutRef.current);
       setTimeout(() => {
+        positionNoteNodes(cy);
         cy.fit(undefined, 40);
         onZoomChange(cy.zoom());
       }, 50);
@@ -159,7 +180,7 @@ export default function GraphCanvas({
       syncGhostNodes(cy, ghostNodes, materializedIds);
 
       if (isFirstLoad || newIds.length > 0) {
-        cy.layout(LAYOUT_OPTIONS[layoutRef.current]).run();
+        runLayout(cy, layoutRef.current);
         setTimeout(() => {
           if (newIds.length > 0 && !isFirstLoad) {
             // Animate to newly added elements
@@ -191,7 +212,7 @@ export default function GraphCanvas({
     if (!cy || cy.nodes().length === 0) return;
     layoutRef.current = layout;
 
-    cy.layout(LAYOUT_OPTIONS[layout]).run();
+    runLayout(cy, layout);
     setTimeout(() => {
       cy.fit(undefined, 40);
       onZoomChange(cy.zoom());
@@ -222,13 +243,22 @@ export default function GraphCanvas({
     const cy = cyRef.current;
     if (!cy) return;
 
+    const hiddenJobIds = new Set<string>();
     cy.nodes().forEach((node) => {
+      if (node.data('isNote')) return; // Skip note nodes, handled below
       const type = (node.data('type') as string) || 'box';
       if (typeFilters[type] === false) {
         node.style('display', 'none');
+        hiddenJobIds.add(node.id());
       } else {
         node.style('display', 'element');
       }
+    });
+
+    // Hide/show note nodes based on their parent job visibility
+    cy.nodes('.note').forEach((noteNode) => {
+      const parentJobId = noteNode.data('parentJobId') as string;
+      noteNode.style('display', hiddenJobIds.has(parentJobId) ? 'none' : 'element');
     });
   }, [typeFilters, cyRef]);
 
@@ -294,6 +324,18 @@ export default function GraphCanvas({
       });
     });
   }, [timingEnabled, timingResult, durationOverrides, cyRef]);
+
+  // Sync annotation nodes when annotations change
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    if (!annotations) {
+      syncAnnotationNodes(cy, new Map());
+      return;
+    }
+    syncAnnotationNodes(cy, annotations);
+    positionNoteNodes(cy);
+  }, [annotations, cyRef]);
 
   return (
     <div ref={containerRef} className="flex-1 bg-gray-900" />

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Job, AppMode } from '../types';
+import type { Job, AppMode, Annotation, AnnotationColor } from '../types';
 import type { TimingAnalysis } from '../utils/timingAnalysis';
 import SearchInput from './SearchInput';
 import FilterPanel from './FilterPanel';
@@ -34,6 +34,9 @@ interface SidebarProps {
   onExpandFromNode?: (jobId: string, upLevels: number, downLevels: number) => void;
   onMaterializeGhost?: (ghostId: string) => void;
   selectedIsGhost?: boolean;
+  annotation?: Annotation;
+  onSetAnnotation?: (jobId: string, text: string, color: AnnotationColor) => void;
+  onRemoveAnnotation?: (jobId: string) => void;
 }
 
 export default function Sidebar({
@@ -60,6 +63,9 @@ export default function Sidebar({
   onExpandFromNode,
   onMaterializeGhost,
   selectedIsGhost = false,
+  annotation,
+  onSetAnnotation,
+  onRemoveAnnotation,
 }: SidebarProps) {
   const selectedTiming = selectedJob && timingResult
     ? timingResult.nodeTiming.get(selectedJob.id) ?? null
@@ -143,6 +149,9 @@ export default function Sidebar({
             onClearOverride={onClearOverride}
             isGhost={selectedIsGhost}
             onMaterialize={onMaterializeGhost}
+            annotation={annotation}
+            onSetAnnotation={onSetAnnotation}
+            onRemoveAnnotation={onRemoveAnnotation}
           />
         </div>
 

@@ -39,6 +39,14 @@ export interface GhostNode {
   connectedTo: string;
 }
 
+export type AnnotationColor = 'yellow' | 'cyan' | 'pink' | 'lime' | 'orange' | 'violet';
+
+export interface Annotation {
+  jobId: string;
+  text: string;
+  color: AnnotationColor;
+}
+
 export interface AppState {
   jobs: Job[];
   metadata: JobMetadata | null;

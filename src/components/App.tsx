@@ -3,6 +3,7 @@ import type { LayoutName } from '../types';
 import { useAppMode } from '../hooks/useAppMode';
 import { useSelection } from '../hooks/useSelection';
 import { useTimingAnalysis } from '../hooks/useTimingAnalysis';
+import { useAnnotations } from '../hooks/useAnnotations';
 import { getUpstream, getDownstream } from '../utils/graphUtils';
 import { exportAsPng, exportAsSvg } from '../utils/exportGraph';
 import Header from './Header';
@@ -44,6 +45,14 @@ export default function App() {
     clearDurationOverride,
     resetAllOverrides,
   } = useTimingAnalysis(jobs);
+
+  const {
+    annotations,
+    setAnnotation,
+    removeAnnotation,
+    exportAnnotations,
+    importAnnotations,
+  } = useAnnotations(jobs);
 
   const [layout, setLayout] = useState<LayoutName>('dagre');
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,6 +113,27 @@ export default function App() {
     materializeGhost(ghostId);
   }, [materializeGhost]);
 
+  const handleExportNotes = useCallback(() => {
+    const json = exportAnnotations();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'annotations.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [exportAnnotations]);
+
+  const handleImportNotes = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        importAnnotations(reader.result);
+      }
+    };
+    reader.readAsText(file);
+  }, [importAnnotations]);
+
   const hasData = jobs.length > 0;
 
   return (
@@ -121,6 +151,9 @@ export default function App() {
         mode={mode}
         onImportSqlite={openDatabase}
         onCloseDatabase={closeDatabase}
+        annotationCount={annotations.size}
+        onExportNotes={handleExportNotes}
+        onImportNotes={handleImportNotes}
       />
 
       {error && (
@@ -164,6 +197,9 @@ export default function App() {
           onExpandFromNode={expandFromNode}
           onMaterializeGhost={materializeGhost}
           selectedIsGhost={selectedIsGhost}
+          annotation={selectedJobId ? annotations.get(selectedJobId) : undefined}
+          onSetAnnotation={setAnnotation}
+          onRemoveAnnotation={removeAnnotation}
         />
 
         {hasData || (mode === 'explorer' && dbOpen) ? (
@@ -181,6 +217,7 @@ export default function App() {
             ghostNodes={ghostNodes}
             incrementalMode={isIncremental}
             onGhostClick={handleGhostClick}
+            annotations={annotations}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">

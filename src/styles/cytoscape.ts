@@ -216,4 +216,132 @@ export const cytoscapeStylesheet: StyleEntry[] = [
       'opacity': 0.7,
     },
   },
+  // --- Annotation note nodes ---
+  {
+    selector: 'node.note',
+    style: {
+      'shape': 'tag',
+      'width': '120px',
+      'height': '28px',
+      'font-size': '9px',
+      'font-family': 'system-ui, -apple-system, sans-serif',
+      'color': '#111827',
+      'text-valign': 'center',
+      'text-halign': 'center',
+      'text-wrap': 'ellipsis',
+      'text-max-width': '100px',
+      'opacity': 0.85,
+      'border-width': 0,
+      'label': 'data(label)',
+    },
+  },
+  // Note size classes
+  {
+    selector: 'node.note-short',
+    style: {
+      'height': '28px',
+    },
+  },
+  {
+    selector: 'node.note-medium',
+    style: {
+      'height': '42px',
+      'text-wrap': 'wrap',
+      'text-max-width': '100px',
+    },
+  },
+  {
+    selector: 'node.note-long',
+    style: {
+      'height': '58px',
+      'text-wrap': 'wrap',
+      'text-max-width': '100px',
+    },
+  },
+  // Note connecting edge
+  {
+    selector: 'edge.note-edge',
+    style: {
+      'line-style': 'dotted',
+      'width': 1,
+      'target-arrow-shape': 'none',
+      'opacity': 0.5,
+      'curve-style': 'bezier',
+    },
+  },
+  // --- Color variants: note nodes ---
+  {
+    selector: 'node.note.highlight-yellow',
+    style: { 'background-color': '#FBBF24' },
+  },
+  {
+    selector: 'node.note.highlight-cyan',
+    style: { 'background-color': '#22D3EE' },
+  },
+  {
+    selector: 'node.note.highlight-pink',
+    style: { 'background-color': '#F472B6' },
+  },
+  {
+    selector: 'node.note.highlight-lime',
+    style: { 'background-color': '#A3E635' },
+  },
+  {
+    selector: 'node.note.highlight-orange',
+    style: { 'background-color': '#FB923C' },
+  },
+  {
+    selector: 'node.note.highlight-violet',
+    style: { 'background-color': '#A78BFA' },
+  },
+  // --- Color variants: annotated job node borders ---
+  {
+    selector: 'node.annotated.highlight-yellow',
+    style: { 'border-color': '#F59E0B', 'border-width': 3 },
+  },
+  {
+    selector: 'node.annotated.highlight-cyan',
+    style: { 'border-color': '#06B6D4', 'border-width': 3 },
+  },
+  {
+    selector: 'node.annotated.highlight-pink',
+    style: { 'border-color': '#EC4899', 'border-width': 3 },
+  },
+  {
+    selector: 'node.annotated.highlight-lime',
+    style: { 'border-color': '#84CC16', 'border-width': 3 },
+  },
+  {
+    selector: 'node.annotated.highlight-orange',
+    style: { 'border-color': '#F97316', 'border-width': 3 },
+  },
+  {
+    selector: 'node.annotated.highlight-violet',
+    style: { 'border-color': '#8B5CF6', 'border-width': 3 },
+  },
+  // --- Color variants: note edges ---
+  {
+    selector: 'edge.note-edge.highlight-yellow',
+    style: { 'line-color': '#F59E0B', 'opacity': 0.65 },
+  },
+  {
+    selector: 'edge.note-edge.highlight-cyan',
+    style: { 'line-color': '#06B6D4', 'opacity': 0.65 },
+  },
+  {
+    selector: 'edge.note-edge.highlight-pink',
+    style: { 'line-color': '#EC4899', 'opacity': 0.65 },
+  },
+  {
+    selector: 'edge.note-edge.highlight-lime',
+    style: { 'line-color': '#84CC16', 'opacity': 0.65 },
+  },
+  {
+    selector: 'edge.note-edge.highlight-orange',
+    style: { 'line-color': '#F97316', 'opacity': 0.65 },
+  },
+  {
+    selector: 'edge.note-edge.highlight-violet',
+    style: { 'line-color': '#8B5CF6', 'opacity': 0.65 },
+  },
 ];

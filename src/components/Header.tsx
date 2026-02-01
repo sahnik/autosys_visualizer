@@ -14,6 +14,9 @@ interface HeaderProps {
   mode: AppMode;
   onImportSqlite: (file: File) => void;
   onCloseDatabase: () => void;
+  annotationCount?: number;
+  onExportNotes?: () => void;
+  onImportNotes?: (file: File) => void;
 }
 
 export default function Header({
@@ -29,9 +32,13 @@ export default function Header({
   mode,
   onImportSqlite,
   onCloseDatabase,
+  annotationCount = 0,
+  onExportNotes,
+  onImportNotes,
 }: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sqliteInputRef = useRef<HTMLInputElement>(null);
+  const notesInputRef = useRef<HTMLInputElement>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
@@ -47,6 +54,14 @@ export default function Header({
     const file = e.target.files?.[0];
     if (file) {
       onImportSqlite(file);
+      e.target.value = '';
+    }
+  };
+
+  const handleNotesImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onImportNotes) {
+      onImportNotes(file);
       e.target.value = '';
     }
   };
@@ -191,6 +206,34 @@ export default function Header({
           </svg>
           Timing
         </button>
+
+        {hasData && (
+          <>
+            <input
+              ref={notesInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleNotesImport}
+              className="hidden"
+            />
+            {annotationCount > 0 && onExportNotes && (
+              <button
+                onClick={onExportNotes}
+                className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+              >
+                Export Notes
+              </button>
+            )}
+            {onImportNotes && (
+              <button
+                onClick={() => notesInputRef.current?.click()}
+                className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+              >
+                Import Notes
+              </button>
+            )}
+          </>
+        )}
 
         <button
           onClick={onFit}
