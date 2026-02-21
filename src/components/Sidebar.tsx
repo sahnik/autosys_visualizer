@@ -29,7 +29,7 @@ interface SidebarProps {
   ghostCount?: number;
   onClearGraph?: () => void;
   onCloseDatabase?: () => void;
-  onSearchDatabase?: (query: string) => { id: string; name: string; type?: string }[];
+  onSearchDatabase?: (query: string) => Promise<{ id: string; name: string; type?: string }[]>;
   onSetStartingNode?: (jobId: string, upLevels: number, downLevels: number) => void;
   onExpandFromNode?: (jobId: string, upLevels: number, downLevels: number) => void;
   onMaterializeGhost?: (ghostId: string) => void;

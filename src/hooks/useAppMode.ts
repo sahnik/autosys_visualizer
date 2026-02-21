@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import type { Job, GhostNode, AppMode } from '../types';
+import type { JobSearchResult } from '../services/dataProvider';
 import { useGraphData } from './useGraphData';
 import { useExplorerData } from './useExplorerData';
 
@@ -22,10 +23,10 @@ export interface UseAppModeReturn {
   seedJobId: string | null;
   openDatabase: (file: File) => Promise<void>;
   closeDatabase: () => void;
-  searchAllJobs: (query: string) => { id: string; name: string; type?: string }[];
-  setStartingNode: (jobId: string, upLevels: number, downLevels: number) => void;
-  expandFromNode: (jobId: string, upLevels: number, downLevels: number) => void;
-  materializeGhost: (ghostId: string) => void;
+  searchAllJobs: (query: string) => Promise<JobSearchResult[]>;
+  setStartingNode: (jobId: string, upLevels: number, downLevels: number) => Promise<void>;
+  expandFromNode: (jobId: string, upLevels: number, downLevels: number) => Promise<void>;
+  materializeGhost: (ghostId: string) => Promise<void>;
   clearGraph: () => void;
 }
 

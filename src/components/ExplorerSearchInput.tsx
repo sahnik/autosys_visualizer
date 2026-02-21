@@ -7,7 +7,7 @@ interface SearchResult {
 }
 
 interface ExplorerSearchInputProps {
-  onSearch: (query: string) => SearchResult[];
+  onSearch: (query: string) => Promise<SearchResult[]>;
   onSelectJob: (jobId: string) => void;
 }
 
@@ -19,13 +19,13 @@ export default function ExplorerSearchInput({ onSearch, onSelectJob }: ExplorerS
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const doSearch = useCallback((q: string) => {
+  const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) {
       setResults([]);
       setShowDropdown(false);
       return;
     }
-    const r = onSearch(q);
+    const r = await onSearch(q);
     setResults(r);
     setShowDropdown(r.length > 0);
     setHighlightIndex(-1);

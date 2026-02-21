@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Job, GhostNode } from '../types';
-import { sqliteService } from '../services/sqliteService';
+import type { JobSearchResult } from '../services/dataProvider';
+import { sqliteProvider } from '../services/sqliteDataProvider';
 
 export interface UseExplorerDataReturn {
   materializedJobs: Job[];
@@ -13,10 +14,10 @@ export interface UseExplorerDataReturn {
   dbOpen: boolean;
   openDatabase: (file: File) => Promise<void>;
   closeDatabase: () => void;
-  searchAllJobs: (query: string) => { id: string; name: string; type?: string }[];
-  setStartingNode: (jobId: string, upLevels: number, downLevels: number) => void;
-  expandFromNode: (jobId: string, upLevels: number, downLevels: number) => void;
-  materializeGhost: (ghostId: string) => void;
+  searchAllJobs: (query: string) => Promise<JobSearchResult[]>;
+  setStartingNode: (jobId: string, upLevels: number, downLevels: number) => Promise<void>;
+  expandFromNode: (jobId: string, upLevels: number, downLevels: number) => Promise<void>;
+  materializeGhost: (ghostId: string) => Promise<void>;
   clearGraph: () => void;
 }
 
@@ -30,15 +31,21 @@ export function useExplorerData(): UseExplorerDataReturn {
   const [loading, setLoading] = useState(false);
   const [dbOpen, setDbOpen] = useState(false);
 
+  // Ref mirrors materializedJobs so async callbacks can read current values
+  // without a state updater, allowing all awaits to complete before any setState.
+  const materializedJobsRef = useRef<Job[]>([]);
+
   const openDatabase = useCallback(async (file: File) => {
     try {
       setLoading(true);
       setError(null);
-      await sqliteService.init();
+      await sqliteProvider.init();
       const buffer = await file.arrayBuffer();
-      sqliteService.openDatabase(buffer);
+      sqliteProvider.openDatabase(buffer);
+      const count = await sqliteProvider.getTotalJobCount();
+      materializedJobsRef.current = [];
       setDbOpen(true);
-      setTotalJobCount(sqliteService.getTotalJobCount());
+      setTotalJobCount(count);
       setMaterializedJobs([]);
       setGhostNodes([]);
       setMaterializedIds(new Set());
@@ -51,7 +58,8 @@ export function useExplorerData(): UseExplorerDataReturn {
   }, []);
 
   const closeDatabase = useCallback(() => {
-    sqliteService.closeDatabase();
+    sqliteProvider.disconnect();
+    materializedJobsRef.current = [];
     setDbOpen(false);
     setMaterializedJobs([]);
     setGhostNodes([]);
@@ -61,29 +69,24 @@ export function useExplorerData(): UseExplorerDataReturn {
     setError(null);
   }, []);
 
-  const searchAllJobs = useCallback((query: string) => {
-    if (!sqliteService.isOpen() || !query.trim()) return [];
+  const searchAllJobs = useCallback(async (query: string): Promise<JobSearchResult[]> => {
+    if (!sqliteProvider.isConnected() || !query.trim()) return [];
     try {
-      return sqliteService.searchJobs(query);
+      return await sqliteProvider.searchJobs(query);
     } catch {
       return [];
     }
   }, []);
 
-  const mergeIds = useCallback((existingIds: Set<string>, newJobs: Job[]) => {
-    const updatedIds = new Set(existingIds);
-    for (const job of newJobs) {
-      updatedIds.add(job.id);
-    }
-    return updatedIds;
-  }, []);
-
-  const setStartingNode = useCallback((jobId: string, upLevels: number, downLevels: number) => {
+  const setStartingNode = useCallback(async (jobId: string, upLevels: number, downLevels: number) => {
     try {
       setError(null);
-      const jobs = sqliteService.expandLevels(jobId, upLevels, downLevels);
+      // Complete all async work before setting state
+      const jobs = await sqliteProvider.expandLevels(jobId, upLevels, downLevels);
       const ids = new Set(jobs.map((j) => j.id));
-      const ghosts = sqliteService.discoverGhosts(ids);
+      const ghosts = await sqliteProvider.discoverGhosts(ids);
+      // Set all state synchronously so React batches into one render
+      materializedJobsRef.current = jobs;
       setMaterializedJobs(jobs);
       setMaterializedIds(ids);
       setGhostNodes(ghosts);
@@ -93,46 +96,50 @@ export function useExplorerData(): UseExplorerDataReturn {
     }
   }, []);
 
-  const expandFromNode = useCallback((jobId: string, upLevels: number, downLevels: number) => {
+  const expandFromNode = useCallback(async (jobId: string, upLevels: number, downLevels: number) => {
     try {
       setError(null);
-      const newJobs = sqliteService.expandLevels(jobId, upLevels, downLevels);
-      setMaterializedJobs((prev) => {
-        const currentIds = new Set(prev.map((j) => j.id));
-        const toAdd = newJobs.filter((j) => !currentIds.has(j.id));
-        const updated = toAdd.length > 0 ? [...prev, ...toAdd] : prev;
-        const updatedIds = mergeIds(currentIds, toAdd);
-        setMaterializedIds(updatedIds);
-        const ghosts = sqliteService.discoverGhosts(updatedIds);
-        setGhostNodes(ghosts);
-        return updated;
-      });
+      const newJobs = await sqliteProvider.expandLevels(jobId, upLevels, downLevels);
+      // Merge against ref (current value) so we can do all awaits first
+      const prev = materializedJobsRef.current;
+      const currentIds = new Set(prev.map((j) => j.id));
+      const toAdd = newJobs.filter((j) => !currentIds.has(j.id));
+      const updated = toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+      const updatedIds = new Set(updated.map((j) => j.id));
+      const ghosts = await sqliteProvider.discoverGhosts(updatedIds);
+      // Set all state synchronously so React batches into one render
+      materializedJobsRef.current = updated;
+      setMaterializedJobs(updated);
+      setMaterializedIds(updatedIds);
+      setGhostNodes(ghosts);
     } catch (e) {
       setError(`Failed to expand: ${e instanceof Error ? e.message : String(e)}`);
     }
-  }, [mergeIds]);
+  }, []);
 
-  const materializeGhost = useCallback((ghostId: string) => {
+  const materializeGhost = useCallback(async (ghostId: string) => {
     try {
       setError(null);
       // Only materialize the ghost itself (0 levels) — its neighbors appear as new ghosts
-      const newJobs = sqliteService.expandLevels(ghostId, 0, 0);
-      setMaterializedJobs((prev) => {
-        const currentIds = new Set(prev.map((j) => j.id));
-        const toAdd = newJobs.filter((j) => !currentIds.has(j.id));
-        const updated = toAdd.length > 0 ? [...prev, ...toAdd] : prev;
-        const updatedIds = new Set(updated.map((j) => j.id));
-        setMaterializedIds(updatedIds);
-        const ghosts = sqliteService.discoverGhosts(updatedIds);
-        setGhostNodes(ghosts);
-        return updated;
-      });
+      const newJobs = await sqliteProvider.expandLevels(ghostId, 0, 0);
+      const prev = materializedJobsRef.current;
+      const currentIds = new Set(prev.map((j) => j.id));
+      const toAdd = newJobs.filter((j) => !currentIds.has(j.id));
+      const updated = toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+      const updatedIds = new Set(updated.map((j) => j.id));
+      const ghosts = await sqliteProvider.discoverGhosts(updatedIds);
+      // Set all state synchronously so React batches into one render
+      materializedJobsRef.current = updated;
+      setMaterializedJobs(updated);
+      setMaterializedIds(updatedIds);
+      setGhostNodes(ghosts);
     } catch (e) {
       setError(`Failed to materialize: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
 
   const clearGraph = useCallback(() => {
+    materializedJobsRef.current = [];
     setMaterializedJobs([]);
     setGhostNodes([]);
     setMaterializedIds(new Set());
